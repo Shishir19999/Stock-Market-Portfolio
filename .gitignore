@@ -1,0 +1,17 @@
+node_modules
+.next
+dist
+*.mp4
+.env
+.env.*
+!.env.example
+node_modules/
+!.env.docker.example
+!.env-example
+*.pem
+*.key
+.next/
+dist/
+build/
+coverage/
+*.log
