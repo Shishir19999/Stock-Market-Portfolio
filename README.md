@@ -1,25 +1,37 @@
 # Stock Market Portfolio
 
-A small MERN app that lists stocks from MongoDB and lets you add them to a watchlist.
+**Live demo:** https://shishir19999.github.io/Stock-Market-Portfolio/
 
-**Stack:** React 19 + Vite 8 + MUI 9 (Frontend), Express 5 + Mongoose 9 (Backend), MongoDB.
+A portfolio and market app: browse stocks, track a watchlist with price alerts, paper-trade with virtual cash, and review your portfolio on a dashboard. Prices are simulated sample data, paper trading only, not financial advice.
 
-Requires Node.js 24 LTS (Docker images: node:24, nginx:1.30, mongo:8.0).
+**Stack:** React 19 + Vite 8 (Frontend), Express 5 + Mongoose 9 (Backend), MongoDB.
 
-## Setup
+## Features
+- Dashboard: total value, unrealized and daily P&L, allocation donut chart, top watchlist movers, holdings CSV export.
+- Market: search, sector filter, sorting, top gainers and losers.
+- Stock detail: interactive inline-SVG price chart (hover/keyboard tooltip, selectable ranges), buy/sell paper trading with validation (cash, holdings), price alerts.
+- Watchlist, transaction history with CSV export, compare two stocks side by side.
+- Light/dark theme (follows system, remembered), responsive from 320px, skeletons, empty/error states, toasts, confirm dialogs, 404 page.
+- Parallax and scroll-reveal on the landing and dashboard header backgrounds only (transform/opacity, IntersectionObserver + requestAnimationFrame, no libraries). Disabled under `prefers-reduced-motion` and on small or low-power screens.
+
+## Run modes
+### Full stack (Express + MongoDB)
 ```bash
-# Backend
-cd Backend
-cp .env.example .env     # set MONGODB_URL
-npm install
-npm start                # or: npm run dev
-
-# Frontend
-cd Frontend
-cp .env.example .env     # VITE_API_URL must match the backend port
-npm install
-npm run dev              # npm run build for production
+cd Backend && cp .env.example .env && npm install && npm start
+cd Frontend && cp .env.example .env && npm install && npm run dev
 ```
+Stocks and the watchlist come from the API; paper-trading data (cash, holdings, transactions, alerts) is stored in the browser.
+
+### Browser-only demo (no server, no database)
+```bash
+cd Frontend
+npm run dev:demo       # local demo
+npm run build:pages    # static build for GitHub Pages (base /Stock-Market-Portfolio/, hash routes) -> Frontend/dist
+```
+The demo swaps the API layer for an in-browser backend (`VITE_DEMO=true`): about 60 stocks with simulated history, a paper-trading account with starting cash, a simulated live price ticker, localStorage persistence and a "Reset demo data" action. Demo sign-in details are shown on the login page.
+
+## Tests
+`cd Backend && npm test` and `cd Frontend && npm test` (plus `npm run lint`).
 
 ## Environment variables
 - Backend: `PORT` (default 8080), `MONGODB_URL` (default `mongodb://localhost:27017/Stock_Market_Portfolio`).
