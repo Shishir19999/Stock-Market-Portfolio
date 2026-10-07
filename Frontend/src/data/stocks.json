@@ -1,0 +1,482 @@
+[
+ {
+  "symbol": "AAPL",
+  "company": "Apple Inc.",
+  "description": "Consumer electronics, software and services",
+  "initial_price": 0.99,
+  "price_2002": 0.3,
+  "price_2007": 5.1
+ },
+ {
+  "symbol": "MSFT",
+  "company": "Microsoft Corporation",
+  "description": "Software, cloud computing and devices",
+  "initial_price": 21,
+  "price_2002": 26.5,
+  "price_2007": 29.5
+ },
+ {
+  "symbol": "GOOGL",
+  "company": "Alphabet Inc.",
+  "description": "Search, advertising and cloud services",
+  "initial_price": 85,
+  "price_2002": 55,
+  "price_2007": 330
+ },
+ {
+  "symbol": "AMZN",
+  "company": "Amazon.com, Inc.",
+  "description": "E-commerce and cloud infrastructure",
+  "initial_price": 18,
+  "price_2002": 17.5,
+  "price_2007": 90
+ },
+ {
+  "symbol": "TSLA",
+  "company": "Tesla, Inc.",
+  "description": "Electric vehicles and clean energy",
+  "initial_price": 17,
+  "price_2002": 1.5,
+  "price_2007": 3
+ },
+ {
+  "symbol": "NFLX",
+  "company": "Netflix, Inc.",
+  "description": "Subscription video streaming",
+  "initial_price": 15,
+  "price_2002": 0.9,
+  "price_2007": 3.3
+ },
+ {
+  "symbol": "NVDA",
+  "company": "NVIDIA Corporation",
+  "description": "GPUs and AI computing platforms",
+  "initial_price": 12,
+  "price_2002": 0.9,
+  "price_2007": 6.5
+ },
+ {
+  "symbol": "INTC",
+  "company": "Intel Corporation",
+  "description": "Semiconductors and microprocessors",
+  "initial_price": 30,
+  "price_2002": 17,
+  "price_2007": 22
+ },
+ {
+  "symbol": "IBM",
+  "company": "International Business Machines",
+  "description": "Enterprise IT, consulting and hybrid cloud",
+  "initial_price": 120,
+  "price_2002": 82,
+  "price_2007": 106
+ },
+ {
+  "symbol": "ORCL",
+  "company": "Oracle Corporation",
+  "description": "Database software and cloud applications",
+  "initial_price": 40,
+  "price_2002": 11,
+  "price_2007": 20
+ },
+ {
+  "symbol": "JPM",
+  "company": "JPMorgan Chase & Co.",
+  "description": "Global banking and financial services",
+  "initial_price": 45,
+  "price_2002": 25,
+  "price_2007": 46
+ },
+ {
+  "symbol": "KO",
+  "company": "The Coca-Cola Company",
+  "description": "Non-alcoholic beverages",
+  "initial_price": 55,
+  "price_2002": 24,
+  "price_2007": 31
+ },
+ {
+  "symbol": "DIS",
+  "company": "The Walt Disney Company",
+  "description": "Media, parks and entertainment",
+  "initial_price": 28,
+  "price_2002": 18,
+  "price_2007": 33
+ },
+ {
+  "symbol": "XOM",
+  "company": "Exxon Mobil Corporation",
+  "description": "Integrated oil and gas",
+  "initial_price": 70,
+  "price_2002": 33,
+  "price_2007": 80
+ },
+ {
+  "symbol": "WMT",
+  "company": "Walmart Inc.",
+  "description": "Retail hypermarkets and e-commerce",
+  "initial_price": 52,
+  "price_2002": 47,
+  "price_2007": 46
+ },
+ {
+  "symbol": "PFE",
+  "company": "Pfizer Inc.",
+  "description": "Pharmaceuticals and vaccines",
+  "initial_price": 113.77,
+  "price_2002": 69.3,
+  "price_2007": 133.19
+ },
+ {
+  "symbol": "JNJ",
+  "company": "Johnson & Johnson",
+  "description": "Healthcare products and pharmaceuticals",
+  "initial_price": 122.58,
+  "price_2002": 120.53,
+  "price_2007": 198.23
+ },
+ {
+  "symbol": "MRK",
+  "company": "Merck & Co., Inc.",
+  "description": "Pharmaceuticals and animal health",
+  "initial_price": 32.12,
+  "price_2002": 22.37,
+  "price_2007": 28.91
+ },
+ {
+  "symbol": "PG",
+  "company": "The Procter & Gamble Company",
+  "description": "Consumer packaged goods",
+  "initial_price": 90.22,
+  "price_2002": 92.11,
+  "price_2007": 87.42
+ },
+ {
+  "symbol": "PEP",
+  "company": "PepsiCo, Inc.",
+  "description": "Beverages and snack foods",
+  "initial_price": 19.24,
+  "price_2002": 17.48,
+  "price_2007": 38.55
+ },
+ {
+  "symbol": "MCD",
+  "company": "McDonald's Corporation",
+  "description": "Quick-service restaurants",
+  "initial_price": 37.11,
+  "price_2002": 12.09,
+  "price_2007": 10.91
+ },
+ {
+  "symbol": "NKE",
+  "company": "NIKE, Inc.",
+  "description": "Athletic footwear and apparel",
+  "initial_price": 112.81,
+  "price_2002": 100.64,
+  "price_2007": 80.39
+ },
+ {
+  "symbol": "HD",
+  "company": "The Home Depot, Inc.",
+  "description": "Home improvement retail",
+  "initial_price": 114.99,
+  "price_2002": 38.34,
+  "price_2007": 72.55
+ },
+ {
+  "symbol": "BA",
+  "company": "The Boeing Company",
+  "description": "Commercial aircraft and defense systems",
+  "initial_price": 149.84,
+  "price_2002": 46.7,
+  "price_2007": 134.71
+ },
+ {
+  "symbol": "CAT",
+  "company": "Caterpillar Inc.",
+  "description": "Construction and mining equipment",
+  "initial_price": 14.4,
+  "price_2002": 10.77,
+  "price_2007": 19.71
+ },
+ {
+  "symbol": "GE",
+  "company": "General Electric Company",
+  "description": "Industrial conglomerate: aviation, power and healthcare",
+  "initial_price": 49.87,
+  "price_2002": 51.6,
+  "price_2007": 93.63
+ },
+ {
+  "symbol": "F",
+  "company": "Ford Motor Company",
+  "description": "Automobiles and trucks",
+  "initial_price": 36.08,
+  "price_2002": 13.77,
+  "price_2007": 22.17
+ },
+ {
+  "symbol": "GM",
+  "company": "General Motors Company",
+  "description": "Automobiles and mobility services",
+  "initial_price": 57.07,
+  "price_2002": 30.11,
+  "price_2007": 40.08
+ },
+ {
+  "symbol": "T",
+  "company": "AT&T Inc.",
+  "description": "Telecommunications and media",
+  "initial_price": 107.76,
+  "price_2002": 143.52,
+  "price_2007": 398.81
+ },
+ {
+  "symbol": "VZ",
+  "company": "Verizon Communications Inc.",
+  "description": "Wireless and broadband services",
+  "initial_price": 148.65,
+  "price_2002": 171.27,
+  "price_2007": 383.51
+ },
+ {
+  "symbol": "CSCO",
+  "company": "Cisco Systems, Inc.",
+  "description": "Networking hardware and software",
+  "initial_price": 123.84,
+  "price_2002": 164.05,
+  "price_2007": 421.9
+ },
+ {
+  "symbol": "QCOM",
+  "company": "QUALCOMM Incorporated",
+  "description": "Wireless chipsets and licensing",
+  "initial_price": 44.13,
+  "price_2002": 53.16,
+  "price_2007": 146.71
+ },
+ {
+  "symbol": "TXN",
+  "company": "Texas Instruments Incorporated",
+  "description": "Analog and embedded semiconductors",
+  "initial_price": 25.63,
+  "price_2002": 33.67,
+  "price_2007": 35.26
+ },
+ {
+  "symbol": "AMD",
+  "company": "Advanced Micro Devices, Inc.",
+  "description": "CPUs, GPUs and adaptive computing",
+  "initial_price": 108.23,
+  "price_2002": 42.68,
+  "price_2007": 97.61
+ },
+ {
+  "symbol": "ADBE",
+  "company": "Adobe Inc.",
+  "description": "Creative and document software",
+  "initial_price": 34.17,
+  "price_2002": 40.73,
+  "price_2007": 46.64
+ },
+ {
+  "symbol": "CRM",
+  "company": "Salesforce, Inc.",
+  "description": "Cloud CRM software",
+  "initial_price": 98.99,
+  "price_2002": 61.85,
+  "price_2007": 64.45
+ },
+ {
+  "symbol": "EBAY",
+  "company": "eBay Inc.",
+  "description": "Online marketplace",
+  "initial_price": 122.75,
+  "price_2002": 128.23,
+  "price_2007": 91.64
+ },
+ {
+  "symbol": "BAC",
+  "company": "Bank of America Corporation",
+  "description": "Consumer and investment banking",
+  "initial_price": 136.08,
+  "price_2002": 134.25,
+  "price_2007": 341.2
+ },
+ {
+  "symbol": "C",
+  "company": "Citigroup Inc.",
+  "description": "Global banking and financial services",
+  "initial_price": 78.37,
+  "price_2002": 36.48,
+  "price_2007": 27.95
+ },
+ {
+  "symbol": "WFC",
+  "company": "Wells Fargo & Company",
+  "description": "Retail and commercial banking",
+  "initial_price": 98.96,
+  "price_2002": 79.99,
+  "price_2007": 90.48
+ },
+ {
+  "symbol": "GS",
+  "company": "The Goldman Sachs Group, Inc.",
+  "description": "Investment banking and securities",
+  "initial_price": 64.87,
+  "price_2002": 23.31,
+  "price_2007": 61.27
+ },
+ {
+  "symbol": "MS",
+  "company": "Morgan Stanley",
+  "description": "Wealth management and investment banking",
+  "initial_price": 109.19,
+  "price_2002": 119.49,
+  "price_2007": 281.63
+ },
+ {
+  "symbol": "AXP",
+  "company": "American Express Company",
+  "description": "Payments and credit cards",
+  "initial_price": 104.2,
+  "price_2002": 64.39,
+  "price_2007": 60.38
+ },
+ {
+  "symbol": "V",
+  "company": "Visa Inc.",
+  "description": "Global payments network",
+  "initial_price": 116.58,
+  "price_2002": 147.74,
+  "price_2007": 392.53
+ },
+ {
+  "symbol": "MA",
+  "company": "Mastercard Incorporated",
+  "description": "Global payments network",
+  "initial_price": 75.74,
+  "price_2002": 24.51,
+  "price_2007": 44.45
+ },
+ {
+  "symbol": "CVX",
+  "company": "Chevron Corporation",
+  "description": "Integrated oil and gas",
+  "initial_price": 146.38,
+  "price_2002": 186.5,
+  "price_2007": 248.22
+ },
+ {
+  "symbol": "COP",
+  "company": "ConocoPhillips",
+  "description": "Oil and gas exploration and production",
+  "initial_price": 13.89,
+  "price_2002": 6.11,
+  "price_2007": 6.06
+ },
+ {
+  "symbol": "MMM",
+  "company": "3M Company",
+  "description": "Diversified industrial and consumer products",
+  "initial_price": 48.16,
+  "price_2002": 54.76,
+  "price_2007": 50.27
+ },
+ {
+  "symbol": "HON",
+  "company": "Honeywell International Inc.",
+  "description": "Aerospace, building and industrial technologies",
+  "initial_price": 18.02,
+  "price_2002": 15.26,
+  "price_2007": 34.58
+ },
+ {
+  "symbol": "UPS",
+  "company": "United Parcel Service, Inc.",
+  "description": "Package delivery and logistics",
+  "initial_price": 86.23,
+  "price_2002": 73.26,
+  "price_2007": 122.64
+ },
+ {
+  "symbol": "FDX",
+  "company": "FedEx Corporation",
+  "description": "Express transportation and logistics",
+  "initial_price": 16.07,
+  "price_2002": 19.72,
+  "price_2007": 52.54
+ },
+ {
+  "symbol": "COST",
+  "company": "Costco Wholesale Corporation",
+  "description": "Membership warehouse retail",
+  "initial_price": 83.44,
+  "price_2002": 44.6,
+  "price_2007": 62.49
+ },
+ {
+  "symbol": "TGT",
+  "company": "Target Corporation",
+  "description": "General merchandise retail",
+  "initial_price": 61.32,
+  "price_2002": 56.3,
+  "price_2007": 88.68
+ },
+ {
+  "symbol": "SBUX",
+  "company": "Starbucks Corporation",
+  "description": "Coffee retail chain",
+  "initial_price": 78.02,
+  "price_2002": 107.42,
+  "price_2007": 299.15
+ },
+ {
+  "symbol": "LMT",
+  "company": "Lockheed Martin Corporation",
+  "description": "Aerospace and defense",
+  "initial_price": 118.63,
+  "price_2002": 42.04,
+  "price_2007": 106.41
+ },
+ {
+  "symbol": "DE",
+  "company": "Deere & Company",
+  "description": "Agricultural and construction machinery",
+  "initial_price": 128.99,
+  "price_2002": 118.41,
+  "price_2007": 292.07
+ },
+ {
+  "symbol": "ABT",
+  "company": "Abbott Laboratories",
+  "description": "Medical devices and diagnostics",
+  "initial_price": 136.8,
+  "price_2002": 168.51,
+  "price_2007": 275.82
+ },
+ {
+  "symbol": "AMGN",
+  "company": "Amgen Inc.",
+  "description": "Biotechnology therapeutics",
+  "initial_price": 109.12,
+  "price_2002": 68.67,
+  "price_2007": 154.67
+ },
+ {
+  "symbol": "GILD",
+  "company": "Gilead Sciences, Inc.",
+  "description": "Antiviral and oncology drugs",
+  "initial_price": 117.59,
+  "price_2002": 43.94,
+  "price_2007": 45.35
+ },
+ {
+  "symbol": "TMO",
+  "company": "Thermo Fisher Scientific Inc.",
+  "description": "Scientific instruments and lab services",
+  "initial_price": 101.68,
+  "price_2002": 54.76,
+  "price_2007": 163.73
+ }
+]
