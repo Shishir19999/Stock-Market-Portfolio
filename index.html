@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/Stock-Market-Portfolio/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Market Portfolio</title>
+    <meta name="description" content="Track a stock portfolio, watch prices, set alerts and practise paper trading with interactive charts." />
+    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="color-scheme" content="light dark" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Stock Market Portfolio" />
+    <meta property="og:description" content="Portfolio dashboard, watchlist with price alerts and paper trading." />
+    <script>
+      // Apply the saved or system theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var t = localStorage.getItem('smp-theme');
+          if (t !== 'dark' && t !== 'light') t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/Stock-Market-Portfolio/assets/index-9jKRrH-N.js"></script>
+    <link rel="stylesheet" crossorigin href="/Stock-Market-Portfolio/assets/index-Dnmuq-lE.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>This app needs JavaScript enabled.</noscript>
+  </body>
+</html>
