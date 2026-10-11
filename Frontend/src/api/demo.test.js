@@ -1,92 +1,104 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createDemoApi, DEMO_LOGINS } from './demo.js';
-import { memoryStorage } from './local.js';
+import { memoryStorage } from './errors.js';
+import { replay } from '@shared/finance.js';
 
 let storage;
 let api;
-const demo = DEMO_LOGINS[0];
-const fresh = () => createDemoApi({ storage, latency: [0, 0], now: () => new Date('2026-10-07T12:00:00Z') });
+const [demo, fresh, adminLogin] = DEMO_LOGINS;
+const NOW = new Date('2026-10-07T12:00:00Z');
+const make = () => createDemoApi({ storage, latency: [0, 0], now: () => NOW });
 
 beforeEach(() => {
   storage = memoryStorage();
-  api = fresh();
+  api = make();
 });
 
-describe('demo auth', () => {
+describe('demo auth and roles', () => {
   it('rejects bad credentials and accepts the documented logins', async () => {
-    await expect(api.auth.login(demo.email, 'wrong')).rejects.toThrow(/Incorrect/);
+    await expect(api.auth.login(demo.email, 'wrong-pass')).rejects.toThrow(/Incorrect/);
     await expect(api.auth.login('nobody@example.com', 'demo1234')).rejects.toThrow(/Incorrect/);
     expect(api.auth.session()).toBeNull();
     const u = await api.auth.login(demo.email.toUpperCase(), demo.password);
-    expect(u.email).toBe(demo.email);
+    expect(u).toMatchObject({ email: demo.email, role: 'user' });
     expect(api.auth.session().id).toBe(u.id);
     await api.auth.logout();
     expect(api.auth.session()).toBeNull();
+    await expect(api.load()).rejects.toThrow(/sign in/);
   });
-  it('requires a session for data calls', async () => {
-    await expect(api.account.get()).rejects.toThrow(/sign in/);
+  it('signs up new users with validation and unique email', async () => {
+    await expect(api.auth.signup('A', 'bad', 'pw')).rejects.toThrow();
+    await expect(api.auth.signup('Sam Smith', demo.email, 'password1')).rejects.toThrow(/already exists/);
+    const u = await api.auth.signup('Sam Smith', 'sam@example.com', 'password1');
+    expect(u.role).toBe('user');
+    const data = await api.load();
+    expect(data.portfolios).toHaveLength(1);
+    expect(replay(data.transactions).cash).toBe(25000);
   });
-  it('signs up with validation and rejects duplicates', async () => {
-    await expect(api.auth.signup('A', 'a@example.com', 'secret1')).rejects.toThrow(/name/);
-    await expect(api.auth.signup('Ann', 'bad', 'secret1')).rejects.toThrow(/email/);
-    await expect(api.auth.signup('Ann', 'ann@example.com', '123')).rejects.toThrow(/6 characters/);
-    const u = await api.auth.signup('Ann', 'ann@example.com', 'secret1');
-    expect(u.name).toBe('Ann');
-    await expect(api.auth.signup('Ann', 'ANN@example.com', 'secret1')).rejects.toThrow(/exists/);
-    expect((await api.account.get()).cash).toBe(25000);
+  it('keeps admin tools away from regular users', async () => {
+    await api.auth.login(demo.email, demo.password);
+    await expect(api.admin.users()).rejects.toMatchObject({ status: 403 });
+    await expect(api.admin.saveSettings({ commission: 1 })).rejects.toMatchObject({ status: 403 });
+  });
+  it('lets an admin manage users, settings and see the audit log', async () => {
+    await api.auth.login(adminLogin.email, adminLogin.password);
+    const users = await api.admin.users();
+    expect(users.map((u) => u.role).sort()).toEqual(['admin', 'user', 'user']);
+    const target = users.find((u) => u.email === fresh.email);
+    expect((await api.admin.updateUser(target.id, { active: false })).active).toBe(false);
+    await expect(api.admin.updateUser(users.find((u) => u.role === 'admin').id, { role: 'user' })).rejects.toThrow(/own admin/);
+    await expect(api.admin.saveSettings({ refreshSeconds: 0 })).rejects.toThrow(/between 3 and 300/);
+    expect((await api.admin.saveSettings({ commission: 3 })).settings.commission).toBe(3);
+    expect((await api.admin.audit()).map((a) => a.action)).toEqual(expect.arrayContaining(['login', 'user.update', 'settings.update']));
+    await api.auth.logout();
+    await expect(api.auth.login(fresh.email, fresh.password)).rejects.toThrow(/deactivated/);
+    await api.auth.login(adminLogin.email, adminLogin.password);
+    await api.admin.deleteUser(target.id);
+    expect((await api.admin.stats()).users).toBe(2);
   });
 });
 
 describe('demo data', () => {
-  beforeEach(async () => {
+  it('seeds a consistent, rich account for the demo user', async () => {
     await api.auth.login(demo.email, demo.password);
+    const d = await api.load();
+    expect(d.portfolios).toHaveLength(2);
+    for (const pf of d.portfolios) {
+      const r = replay(d.transactions.filter((t) => t.portfolioId === pf.id), { method: pf.method });
+      expect(r.cash).toBeGreaterThanOrEqual(0);
+      expect(r.positions.length).toBeGreaterThan(2);
+    }
+    expect(d.watchlists).toHaveLength(2);
+    expect(d.alerts.length).toBeGreaterThan(0);
+    expect(d.orders.some((o) => o.status === 'open')).toBe(true);
+    expect(d.goals.length).toBe(2);
+    expect(d.quotes.source).toBe('simulated');
+    expect(d.transactions.some((t) => t.type === 'dividend')).toBe(true);
+    expect(d.transactions.some((t) => t.type === 'sell')).toBe(true);
   });
-  it('seeds a portfolio, transactions, watchlist and alerts', async () => {
-    const acc = await api.account.get();
-    expect(acc.holdings.length).toBeGreaterThan(5);
-    expect(acc.cash).toBeGreaterThan(0);
-    const tx = await api.account.transactions();
-    expect(tx.length).toBeGreaterThan(5);
-    expect(tx[0].date >= tx[tx.length - 1].date).toBe(true);
-    expect((await api.watchlist.list()).length).toBe(5);
-    expect((await api.alerts.list()).length).toBe(2);
-    expect((await api.stocks.all()).length).toBe(60);
+  it('places orders and persists across a reload of the api', async () => {
+    await api.auth.login(fresh.email, fresh.password);
+    const pf = (await api.load()).portfolios[0];
+    const res = await api.orders.place({ portfolioId: pf.id, symbol: 'KO', side: 'buy', type: 'market', shares: 10 });
+    expect(res.tx.shares).toBe(10);
+    await expect(api.orders.place({ portfolioId: pf.id, symbol: 'KO', side: 'sell', type: 'market', shares: 50 })).rejects.toMatchObject({ status: 400 });
+    const again = make();
+    expect(again.auth.session().email).toBe(fresh.email);
+    expect((await again.load()).transactions).toHaveLength(2);
   });
-  it('persists trades across instances (same storage)', async () => {
-    const before = await api.account.get();
-    await api.account.trade({ symbol: 'AAPL', side: 'buy', shares: 10, price: 1 });
-    const again = fresh();
-    const after = await again.account.get();
-    expect(after.cash).toBe(Math.round((before.cash - 10) * 100) / 100);
-    expect((await again.account.transactions())[0]).toMatchObject({ symbol: 'AAPL', side: 'buy', shares: 10 });
-  });
-  it('rejects overdraft and overselling', async () => {
-    await expect(api.account.trade({ symbol: 'AAPL', side: 'buy', shares: 1e9, price: 1 })).rejects.toThrow(/cash/);
-    await expect(api.account.trade({ symbol: 'TSLA', side: 'sell', shares: 1, price: 3 })).rejects.toThrow(/own/);
-    await expect(api.account.trade({ symbol: 'NOPE', side: 'buy', shares: 1, price: 3 })).rejects.toThrow(/Unknown/);
-  });
-  it('manages the watchlist', async () => {
-    await api.watchlist.add({ symbol: 'GM' });
-    await expect(api.watchlist.add({ symbol: 'GM' })).rejects.toThrow(/already/);
-    await api.watchlist.remove('GM');
-    await expect(api.watchlist.remove('GM')).rejects.toThrow(/Not in/);
-  });
-  it('manages alerts', async () => {
-    await expect(api.alerts.add({ symbol: 'AAPL', direction: 'above', target: 0 })).rejects.toThrow(/target/);
-    const a = await api.alerts.add({ symbol: 'AAPL', direction: 'above', target: '2.5' });
-    expect(a.target).toBe(2.5);
-    await api.alerts.markTriggered(a.id);
-    expect((await api.alerts.list()).find((x) => x.id === a.id).triggeredAt).toBeTruthy();
-    await api.alerts.remove(a.id);
-    expect((await api.alerts.list()).some((x) => x.id === a.id)).toBe(false);
-  });
-  it('resets all demo data', async () => {
-    await api.account.trade({ symbol: 'AAPL', side: 'buy', shares: 10, price: 1 });
-    await api.auth.signup('Ann', 'ann@example.com', 'secret1');
+  it('resets the preview back to the seed', async () => {
+    await api.auth.login(demo.email, demo.password);
+    const pf = (await api.load()).portfolios[0];
+    await api.portfolios.update(pf.id, { name: 'Renamed' });
     await api.resetDemo();
     expect(api.auth.session()).toBeNull();
-    await expect(api.auth.login('ann@example.com', 'secret1')).rejects.toThrow();
     await api.auth.login(demo.email, demo.password);
-    expect((await api.account.transactions()).some((t) => t.shares === 10 && t.symbol === 'AAPL' && t.price === 1)).toBe(false);
+    expect((await api.load()).portfolios[0].name).toBe('Main portfolio');
+  });
+  it('sync returns fresh quotes', async () => {
+    await api.auth.login(demo.email, demo.password);
+    const s = await api.sync();
+    expect(Object.keys(s.quotes.prices)).toHaveLength(60);
+    expect(s.events).toHaveProperty('fills');
   });
 });

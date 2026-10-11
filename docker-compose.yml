@@ -14,13 +14,19 @@ services:
       retries: 5
 
   backend:
-    build: ./Backend
+    build:
+      context: .
+      dockerfile: Backend/Dockerfile
     restart: unless-stopped
     depends_on:
       mongo:
         condition: service_healthy
     environment:
       PORT: "8080"
+      # Required: long random string used to sign login tokens (openssl rand -hex 32)
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      # Optional: free market data provider key; without it prices are simulated
+      MARKET_API_KEY: ${MARKET_API_KEY:-}
       MONGODB_URL: mongodb://mongo:27017/stocks
       # Origin(s) the browser loads the frontend from (comma-separated); add your LAN/public URL when deploying
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${FRONTEND_PORT:-8081}}
@@ -29,7 +35,8 @@ services:
 
   frontend:
     build:
-      context: ./Frontend
+      context: .
+      dockerfile: Frontend/Dockerfile
       args:
         # Must be the URL the BROWSER uses to reach the backend
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}

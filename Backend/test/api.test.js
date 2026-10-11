@@ -1,4 +1,4 @@
-// Runs against a throwaway database (stocks_test_<pid>) that is dropped afterwards.
+// Runs against a throwaway database (st_stocks_test_<pid>) that is dropped afterwards.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -10,7 +10,7 @@ const { createApp } = await import('../app.js');
 const app = createApp();
 
 before(async () => {
-  await mongoose.connect(`${BASE}/stocks_test_${process.pid}`);
+  await mongoose.connect(`${BASE}/st_stocks_test_${process.pid}`);
   await mongoose.connection.dropDatabase();
   const rows = Array.from({ length: 30 }, (_, i) => ({
     company: `Company ${String(i).padStart(2, '0')}`,

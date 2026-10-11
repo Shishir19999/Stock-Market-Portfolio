@@ -14,7 +14,7 @@ const base = [
   ['AMZN', 'Amazon.com, Inc.', 'E-commerce and cloud infrastructure', 18.0, 17.5, 90.0],
   ['TSLA', 'Tesla, Inc.', 'Electric vehicles and clean energy', 17.0, 1.5, 3.0],
   ['NFLX', 'Netflix, Inc.', 'Subscription video streaming', 15.0, 0.9, 3.3],
-  ['NVDA', 'NVIDIA Corporation', 'GPUs and AI computing platforms', 12.0, 0.9, 6.5],
+  ['NVDA', 'NVIDIA Corporation', 'GPUs and accelerated computing platforms', 12.0, 0.9, 6.5],
   ['INTC', 'Intel Corporation', 'Semiconductors and microprocessors', 30.0, 17.0, 22.0],
   ['IBM', 'International Business Machines', 'Enterprise IT, consulting and hybrid cloud', 120.0, 82.0, 106.0],
   ['ORCL', 'Oracle Corporation', 'Database software and cloud applications', 40.0, 11.0, 20.0],

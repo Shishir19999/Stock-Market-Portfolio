@@ -1,42 +1,28 @@
-import mongoose from 'mongoose';
 import express from 'express';
 import cors from 'cors';
 
-// Define stock schema
-const stockSchema = new mongoose.Schema({
-    company: String,
-    description: String,
-    initial_price: Number,
-    price_2002: Number,
-    price_2007: Number,
-    symbol: String,
-});
-
-// Create stock model
-const Stock = mongoose.models.Stock || mongoose.model("Stock", stockSchema);
-
-// Watchlist entries live in their own collection so they never show up in the stock listing.
-const watchlistSchema = new mongoose.Schema({
-    symbol: { type: String, required: true, unique: true, uppercase: true, trim: true },
-    company: String,
-    description: String,
-    initial_price: Number,
-    price_2002: Number,
-    price_2007: Number,
-}, { timestamps: true });
-const Watchlist = mongoose.models.Watchlist || mongoose.model("Watchlist", watchlistSchema);
+import { Stock, Watchlist } from './lib/models.js';
+import { createMarket } from './lib/market.js';
+import { authRouter } from './routes/auth.js';
+import { accountRouter } from './routes/account.js';
+import { adminRouter } from './routes/admin.js';
 
 const num = (v) => (v === undefined || v === null || v === "" ? undefined : Number(v));
 
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export function createApp() {
+export function createApp({ market = createMarket() } = {}) {
 const app = express();
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.set({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' });
+    next();
+});
 
 // CORS_ORIGIN: comma-separated allowed origins (e.g. http://localhost:5173,http://192.168.1.20:5173); unset = any origin.
 const origins = (process.env.CORS_ORIGIN || "").split(",").map((o) => o.trim()).filter(Boolean);
 app.use(cors(origins.length ? { origin: origins } : {}));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Paginated: ?page=1&limit=12&search=text (company, symbol or description)
 //   -> { data, page, limit, total, pages }
@@ -111,10 +97,19 @@ app.delete("/api/watchlist/:symbol", async (req, res) => {
     }
 });
 
+// Authenticated API: accounts (JWT), per-user portfolio data and the admin console.
+app.use("/api/auth", authRouter({ market }));
+app.use("/api/admin", adminRouter({ market }));
+app.use("/api", accountRouter({ market }));
+
+app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
+
 // Global error handler middleware
 app.use((err, req, res, next) => {
+    if (res.headersSent) return next(err);
     if (err.status && err.status < 500) {
-        return res.status(err.status).json({ error: "Invalid request body" });
+        const known = ["ValidationError", "NotFoundError", "LedgerError"].includes(err.name);
+        return res.status(err.status).json({ error: known ? err.message : "Invalid request body", field: err.field });
     }
     console.error(err.stack);
     res.status(500).json({ error: "Something went wrong" });

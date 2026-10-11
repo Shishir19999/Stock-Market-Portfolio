@@ -1,9 +1,15 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AuthContext } from './contexts.js';
 import { api } from '../api/index.js';
 
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(() => api.auth.session());
+
+  useEffect(() => {
+    const out = () => setUser(null);
+    window.addEventListener('smp:unauthorized', out);
+    return () => window.removeEventListener('smp:unauthorized', out);
+  }, []);
 
   const login = useCallback(async (email, password) => {
     const u = await api.auth.login(email, password);
@@ -20,6 +26,9 @@ export default function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, login, signup, logout, authRequired: api.authRequired }), [user, login, signup, logout]);
+  const value = useMemo(
+    () => ({ user, isAdmin: user?.role === 'admin', login, signup, logout, authRequired: api.authRequired }),
+    [user, login, signup, logout],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

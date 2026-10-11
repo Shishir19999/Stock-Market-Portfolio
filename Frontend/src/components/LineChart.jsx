@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 const H = 280;
 const PAD = { l: 52, r: 14, t: 12, b: 26 };
@@ -25,7 +25,8 @@ const fmtDate = (t, span) => {
 /**
  * series: [{ name, color, points: [{t, price}] }]. Hover, touch or arrow keys move a crosshair.
  */
-export default function LineChart({ series, valueFormat = (v) => v.toFixed(2), label, live = false }) {
+export default function LineChart({ series, valueFormat = (v) => v.toFixed(2), label, live = false, allowNegative = false, height = H, area = true }) {
+  const gid = useId().replace(/:/g, '');
   const wrapRef = useRef(null);
   const [width, setWidth] = useState(640);
   const [idx, setIdx] = useState(null);
@@ -47,12 +48,12 @@ export default function LineChart({ series, valueFormat = (v) => v.toFixed(2), l
     let lo = Math.min(...all.map((p) => p.price));
     let hi = Math.max(...all.map((p) => p.price));
     const padY = (hi - lo || hi * 0.02 || 1) * 0.08;
-    lo = Math.max(0, lo - padY);
+    lo = allowNegative ? lo - padY : Math.max(0, lo - padY);
     hi += padY;
     const x = (t) => PAD.l + ((t - t0) / (t1 - t0 || 1)) * (width - PAD.l - PAD.r);
-    const y = (v) => PAD.t + (1 - (v - lo) / (hi - lo || 1)) * (H - PAD.t - PAD.b);
+    const y = (v) => PAD.t + (1 - (v - lo) / (hi - lo || 1)) * (height - PAD.t - PAD.b);
     return { t0, t1, lo, hi, x, y };
-  }, [series, width]);
+  }, [series, width, allowNegative, height]);
 
   if (!geo) {
     return (
@@ -110,7 +111,7 @@ export default function LineChart({ series, valueFormat = (v) => v.toFixed(2), l
     <div className="chart" ref={wrapRef}>
       <svg
         width={width}
-        height={H}
+        height={height}
         role="group"
         tabIndex={0}
         aria-label={`${label}. Use left and right arrow keys to inspect values.`}
@@ -122,7 +123,7 @@ export default function LineChart({ series, valueFormat = (v) => v.toFixed(2), l
         style={{ touchAction: 'pan-y' }}
       >
         <defs>
-          <linearGradient id="area-fill" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`af${gid}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--c1)" stopOpacity="0.28" />
             <stop offset="100%" stopColor="var(--c1)" stopOpacity="0" />
           </linearGradient>
@@ -134,19 +135,19 @@ export default function LineChart({ series, valueFormat = (v) => v.toFixed(2), l
           </g>
         ))}
         {xTicks.map((t, i) => (
-          <text key={t} x={x(t)} y={H - 6} textAnchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'} className="axis">
+          <text key={t} x={x(t)} y={height - 6} textAnchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'} className="axis">
             {fmtDate(t, t1 - t0)}
           </text>
         ))}
-        {single && (
-          <path d={`${pathOf(main)}L${x(main[n - 1].t)},${H - PAD.b}L${x(main[0].t)},${H - PAD.b}Z`} fill="url(#area-fill)" />
+        {single && area && (
+          <path d={`${pathOf(main)}L${x(main[n - 1].t)},${height - PAD.b}L${x(main[0].t)},${height - PAD.b}Z`} fill={`url(#af${gid})`} />
         )}
         {series.map((s) => (
-          <path key={s.name} d={pathOf(s.points)} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          <path key={s.name} d={pathOf(s.points)} fill="none" stroke={s.color} strokeWidth="2" strokeDasharray={s.dash} strokeLinejoin="round" strokeLinecap="round" />
         ))}
         {active !== null && (
           <g>
-            <line x1={tipX} x2={tipX} y1={PAD.t} y2={H - PAD.b} className="crosshair" />
+            <line x1={tipX} x2={tipX} y1={PAD.t} y2={height - PAD.b} className="crosshair" />
             {series.map((s) => {
               const p = valueAt(s, activeT);
               return <circle key={s.name} cx={x(p.t)} cy={y(p.price)} r="4.5" fill={s.color} stroke="var(--surface)" strokeWidth="2" />;
@@ -156,7 +157,7 @@ export default function LineChart({ series, valueFormat = (v) => v.toFixed(2), l
       </svg>
       {active !== null && (
         <div className="tooltip" style={{ left: tipLeft ? undefined : tipX + 10, right: tipLeft ? width - tipX + 10 : undefined }} aria-hidden="true">
-          <strong>{new Date(activeT).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: live ? 'numeric' : undefined, timeZone: live ? undefined : 'UTC' })}</strong>
+          <strong>{new Date(activeT).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: live || t1 - t0 < 800 * 86400000 ? 'numeric' : undefined, timeZone: live ? undefined : 'UTC' })}</strong>
           {series.map((s) => (
             <div key={s.name}>
               <span className="swatch" style={{ background: s.color }} /> {s.name}: {valueFormat(valueAt(s, activeT).price)}
@@ -165,6 +166,45 @@ export default function LineChart({ series, valueFormat = (v) => v.toFixed(2), l
         </div>
       )}
       <span className="sr-only" aria-live="polite">{readout}</span>
+      <ChartTable series={series} valueFormat={valueFormat} />
     </div>
+  );
+}
+
+/** Text alternative for a chart: a collapsible table of evenly sampled points. */
+export function ChartTable({ series, valueFormat, rows = 12 }) {
+  const main = series[0].points;
+  const step = Math.max(1, Math.floor((main.length - 1) / (rows - 1)));
+  const idx = [];
+  for (let i = 0; i < main.length; i += step) idx.push(i);
+  if (idx[idx.length - 1] !== main.length - 1) idx.push(main.length - 1);
+  const at = (s, t) => {
+    let best = s.points[0];
+    for (const p of s.points) if (Math.abs(p.t - t) < Math.abs(best.t - t)) best = p;
+    return best;
+  };
+  return (
+    <details className="chart-table">
+      <summary>View chart data as a table</summary>
+      <div className="table-wrap">
+        <table>
+          <caption className="sr-only">Sampled chart values</caption>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              {series.map((s) => <th scope="col" className="num" key={s.name}>{s.name}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {idx.map((i) => (
+              <tr key={main[i].t}>
+                <th scope="row">{new Date(main[i].t).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}</th>
+                {series.map((s) => <td className="num" key={s.name}>{valueFormat(at(s, main[i].t).price)}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }

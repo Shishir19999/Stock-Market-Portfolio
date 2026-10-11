@@ -1,91 +1,97 @@
-import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { drawdown, riskMetrics, rsi, stockMetrics } from '@shared/analytics.js';
+import { DAILY_RANGES, sliceDays } from '@shared/market.js';
 import { useData, useTitle } from '../context/hooks.js';
-import { Change, EmptyState, PageHeader } from '../components/ui.jsx';
+import { Change, EmptyState, PageHeader, Segmented, StockSelect } from '../components/ui.jsx';
 import LineChart from '../components/LineChart.jsx';
-import { generateHistory, rebase } from '../lib/history.js';
-import { money, pct } from '../lib/format.js';
+import { money, plainPct } from '../lib/format.js';
+
+const COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)'];
+const DASHES = [undefined, '6 4', '2 3', '10 3 2 3'];
+const MAX = 4;
 
 export default function Compare() {
-  useTitle('Compare');
-  const { stocks, bySymbol } = useData();
+  useTitle('Compare stocks');
+  const { stocks, bySymbol, seriesFor } = useData();
   const [params, setParams] = useSearchParams();
-  const a = bySymbol[(params.get('a') || '').toUpperCase()];
-  const b = bySymbol[(params.get('b') || '').toUpperCase()];
+  const [range, setRange] = useState('1Y');
+  const [pick, setPick] = useState('');
+  const fromUrl = (params.get('s') || [params.get('a'), params.get('b')].filter(Boolean).join(',')).split(',').map((x) => x.trim().toUpperCase()).filter((x) => bySymbol[x]);
+  const symbols = [...new Set(fromUrl)].slice(0, MAX);
+  const setSymbols = (list) => setParams(list.length ? { s: list.join(',') } : {}, { replace: true });
+  const options = stocks.filter((s) => !symbols.includes(s.symbol));
+  const choice = pick && options.some((s) => s.symbol === pick) ? pick : options[0]?.symbol || '';
 
-  const set = (k, v) => {
-    const next = new URLSearchParams(params);
-    if (v) next.set(k, v);
-    else next.delete(k);
-    setParams(next, { replace: true });
-  };
-
-  const series = useMemo(
-    () =>
-      [a, b].filter(Boolean).map((s, i) => ({
-        name: s.symbol,
-        color: i === 0 ? 'var(--c1)' : 'var(--c2)',
-        points: rebase(generateHistory(s)),
-      })),
-    [a?.symbol, b?.symbol], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
-  const rows = [
-    ['Company', (s) => s.company],
-    ['Sector', (s) => s.sector],
-    ['Price in 2002', (s) => money(s.price_2002)],
-    ['Price in 2007', (s) => money(s.price_2007)],
-    ['Current price', (s) => money(s.price)],
-    ['2002 to 2007', (s) => <Change value={((s.price_2007 - s.price_2002) / s.price_2002) * 100} />],
-    ['Since 2007', (s) => <Change value={s.growth} />],
-    ['Since 2002', (s) => <Change value={s.growthSince2002} />],
-  ];
-
-  const picker = (id, label, value, other) => (
-    <div className="field grow">
-      <label htmlFor={id}>{label}</label>
-      <select id={id} value={value?.symbol || ''} onChange={(e) => set(id === 'cmp-a' ? 'a' : 'b', e.target.value)}>
-        <option value="">Choose a stock…</option>
-        {stocks.filter((s) => s.symbol !== other?.symbol).map((s) => <option key={s.symbol} value={s.symbol}>{s.symbol} - {s.company}</option>)}
-      </select>
-    </div>
-  );
+  const key = symbols.join(',');
+  const rows = useMemo(() => key.split(',').filter(Boolean).map((sym, i) => {
+    const full = seriesFor(sym);
+    const win = sliceDays(full, range);
+    const closes = win.map((c) => c.c);
+    const base = closes[0] || 1;
+    const m = stockMetrics(full);
+    const risk = riskMetrics(closes);
+    return {
+      sym, color: COLORS[i], dash: DASHES[i], stock: bySymbol[sym], m, risk, dd: drawdown(closes).maxDrawdown,
+      rsi: rsi(full.map((c) => c.c), 14).at(-1),
+      points: win.map((c) => ({ t: c.t, price: (c.c / base) * 100 })),
+    };
+  }), [key, range, seriesFor, bySymbol]);
 
   return (
     <>
-      <PageHeader title="Compare" subtitle="Both prices are rebased to 100 at January 2002 so growth is comparable." />
-      <div className="card filters">
-        {picker('cmp-a', 'First stock', a, b)}
-        {picker('cmp-b', 'Second stock', b, a)}
-      </div>
-      {!a || !b ? (
-        <div className="card"><EmptyState icon="⇄" title="Pick two stocks to compare">Choose a first and second stock above to see their growth side by side.</EmptyState></div>
+      <PageHeader title="Compare stocks" subtitle="Rebased to 100 at the start of the range so different prices are comparable. Add up to four." />
+      <section className="card stack-sm" aria-labelledby="pick-h">
+        <h2 id="pick-h">Choose stocks</h2>
+        <div className="row wrap">
+          {symbols.map((sym, i) => (
+            <span className="chip" key={sym}>
+              <span className="swatch" style={{ background: COLORS[i] }} aria-hidden="true" /> {sym}
+              <button type="button" className="icon-btn chip-x" onClick={() => setSymbols(symbols.filter((x) => x !== sym))} aria-label={`Remove ${sym}`}>×</button>
+            </span>
+          ))}
+        </div>
+        {symbols.length < MAX && (
+          <div className="row wrap pick-row">
+            <StockSelect id="cmp-add" label="Add a stock" value={choice} onChange={setPick} stocks={options} />
+            <button type="button" className="btn btn-primary" onClick={() => { setSymbols([...symbols, choice]); setPick(''); }} disabled={!choice}>Add to comparison</button>
+          </div>
+        )}
+      </section>
+
+      {symbols.length < 2 ? (
+        <div className="card"><EmptyState title="Pick at least two stocks">Add stocks above to see them side by side, or open a stock and use Compare.</EmptyState></div>
       ) : (
         <>
           <section className="card" aria-labelledby="cmp-h">
-            <h2 id="cmp-h">Growth since 2002 (rebased to 100)</h2>
-            <div className="chart-legend">
-              {series.map((s) => <span key={s.name}><span className="swatch" style={{ background: s.color }} /> {s.name}</span>)}
+            <div className="row between wrap">
+              <h2 id="cmp-h">Relative performance</h2>
+              <Segmented label="Range" value={range} onChange={setRange} options={Object.keys(DAILY_RANGES).map((k) => [k, k === 'ALL' ? 'All' : k])} />
             </div>
-            <LineChart label={`Growth comparison of ${a.symbol} and ${b.symbol}`} series={series} valueFormat={(v) => v.toFixed(0)} />
+            <LineChart label={`Relative performance of ${symbols.join(', ')}, rebased to 100`} series={rows.map((r) => ({ name: r.sym, color: r.color, dash: r.dash, points: r.points }))} valueFormat={(v) => v.toFixed(1)} area={false} />
+            <ul className="chart-legend" aria-label="Legend">{rows.map((r) => <li key={r.sym}><span className="swatch" style={{ background: r.color }} aria-hidden="true" /> {r.sym}</li>)}</ul>
           </section>
-          <section className="card flush">
+          <section className="card" aria-labelledby="tbl-h">
+            <h2 id="tbl-h">Side by side</h2>
             <div className="table-wrap">
               <table>
-                <caption className="sr-only">Side-by-side comparison</caption>
-                <thead>
-                  <tr><th scope="col">Measure</th><th scope="col">{a.symbol}</th><th scope="col">{b.symbol}</th></tr>
-                </thead>
+                <caption className="sr-only">Metrics for the selected stocks</caption>
+                <thead><tr><th scope="col">Metric</th>{rows.map((r) => <th scope="col" className="num" key={r.sym}><Link to={`/stocks/${r.sym}`}>{r.sym}</Link></th>)}</tr></thead>
                 <tbody>
-                  {rows.map(([label, fn]) => (
-                    <tr key={label}><th scope="row">{label}</th><td>{fn(a)}</td><td>{fn(b)}</td></tr>
-                  ))}
+                  <tr><th scope="row">Company</th>{rows.map((r) => <td className="num" key={r.sym}>{r.stock.company}</td>)}</tr>
+                  <tr><th scope="row">Price</th>{rows.map((r) => <td className="num" key={r.sym}>{money(r.stock.price)}</td>)}</tr>
+                  <tr><th scope="row">Today</th>{rows.map((r) => <td className="num" key={r.sym}><Change value={r.stock.changePct} /></td>)}</tr>
+                  <tr><th scope="row">Return ({range})</th>{rows.map((r) => <td className="num" key={r.sym}><Change value={r.risk.totalReturn * 100} /></td>)}</tr>
+                  <tr><th scope="row">Volatility ({range})</th>{rows.map((r) => <td className="num" key={r.sym}>{plainPct(r.risk.volatility * 100)}</td>)}</tr>
+                  <tr><th scope="row">Max drawdown ({range})</th>{rows.map((r) => <td className="num" key={r.sym}>{plainPct(r.dd * 100)}</td>)}</tr>
+                  <tr><th scope="row">Sharpe ({range})</th>{rows.map((r) => <td className="num" key={r.sym}>{r.risk.sharpe.toFixed(2)}</td>)}</tr>
+                  <tr><th scope="row">52-week range</th>{rows.map((r) => <td className="num" key={r.sym}>{money(r.m.lo52)} to {money(r.m.hi52)}</td>)}</tr>
+                  <tr><th scope="row">RSI (14)</th>{rows.map((r) => <td className="num" key={r.sym}>{r.rsi?.toFixed(0)}</td>)}</tr>
+                  <tr><th scope="row">Sector</th>{rows.map((r) => <td className="num" key={r.sym}>{r.stock.sector}</td>)}</tr>
+                  <tr><th scope="row">Since 2007</th>{rows.map((r) => <td className="num" key={r.sym}><Change value={r.stock.growth} digits={0} /></td>)}</tr>
                 </tbody>
               </table>
             </div>
-            <p className="muted small pad">
-              Winner since 2002: <strong>{a.growthSince2002 >= b.growthSince2002 ? a.symbol : b.symbol}</strong> ({pct(Math.max(a.growthSince2002, b.growthSince2002))}).
-            </p>
           </section>
         </>
       )}

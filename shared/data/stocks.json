@@ -50,7 +50,7 @@
  {
   "symbol": "NVDA",
   "company": "NVIDIA Corporation",
-  "description": "GPUs and AI computing platforms",
+  "description": "GPUs and accelerated computing platforms",
   "initial_price": 12,
   "price_2002": 0.9,
   "price_2007": 6.5

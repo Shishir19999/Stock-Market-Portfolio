@@ -1,23 +1,21 @@
 # Stock Market Portfolio - Frontend
 
-React 19 + Vite app. It runs in two modes:
+React 19 + Vite app. It runs in two modes that offer the same features:
 
 | Mode | Command | Data |
 | --- | --- | --- |
-| Full stack | `npm run dev` | Express API from `../Backend` (set `VITE_API_URL`) |
-| Browser-only demo | `npm run dev:demo` | Built-in demo backend, saved in your browser |
+| Full stack | `npm run dev` | Express API from `../Backend` (set `VITE_API_URL`), sign in with JWT |
+| Live preview | `npm run dev:demo` | Built-in backend that runs the same shared account service, saved in your browser |
 
 ## Scripts
 
 - `npm run dev` - development server (full-stack mode)
-- `npm run dev:demo` - development server with the demo backend
+- `npm run dev:demo` - development server for the live preview
 - `npm run build` - production build for a normal server
-- `npm run build:pages` - production build for GitHub Pages (demo backend, base path `/Stock-Market-Portfolio/`)
+- `npm run build:pages` - production build for GitHub Pages (live preview, base path `/Stock-Market-Portfolio/`, hash routes)
 - `npm run lint` - ESLint
 - `npm test` - unit tests (Vitest)
 
-## Live demo
+Finance maths, validation, the market simulator and the account rules are imported from `../shared` through the `@shared` alias, so the API and the browser use exactly the same code.
 
-https://shishir19999.github.io/Stock-Market-Portfolio/
-
-Prices in demo mode are simulated and are not financial advice. See the main `README.md` in the repository root for the full feature list, demo logins and backend setup.
+See the repository README for features, roles, the API and deployment.

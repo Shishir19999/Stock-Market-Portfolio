@@ -1,156 +1,198 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DataContext } from './contexts.js';
 import { useToast } from './hooks.js';
-import { api, IS_DEMO } from '../api/index.js';
-import { computePortfolio, evaluateAlerts } from '../lib/finance.js';
+import { api } from '../api/index.js';
+import { combine, replay, valuePortfolio } from '@shared/finance.js';
+import { dailySeries } from '@shared/market.js';
 import { decorate } from '../lib/stocks.js';
-import { createTicker } from '../lib/ticker.js';
-import { money } from '../lib/format.js';
 
-const TICK_MS = 3000;
 const errMsg = (e) => (e && e.message) || 'Something went wrong.';
+const EMPTY = { portfolios: [], transactions: [], orders: [], watchlists: [], alerts: [], goals: [], notifications: [] };
+const SCOPE_KEY = 'smp:scope';
+const readScope = () => {
+  try {
+    return localStorage.getItem(SCOPE_KEY) || 'all';
+  } catch {
+    return 'all';
+  }
+};
 
 export default function DataProvider({ children }) {
   const toast = useToast();
   const [status, setStatus] = useState('loading'); // loading | error | ready
   const [error, setError] = useState('');
   const [stocks, setStocks] = useState([]);
-  const [watchlist, setWatchlist] = useState([]);
-  const [account, setAccount] = useState({ cash: 0, holdings: [], realized: 0 });
-  const [transactions, setTransactions] = useState([]);
-  const [alerts, setAlerts] = useState([]);
-  const [prices, setPrices] = useState({});
-  const tickerRef = useRef(null);
-  const alertsRef = useRef([]);
-  useEffect(() => {
-    alertsRef.current = alerts;
-  }, [alerts]);
+  const [data, setData] = useState(EMPTY);
+  const [quotes, setQuotes] = useState({ source: 'simulated', asOf: 0, prices: {} });
+  const [settings, setSettings] = useState({ refreshSeconds: 5, commission: 0, startingCash: 25000, allowSignups: true, marketSource: 'auto' });
+  const [scope, setScopeState] = useState(readScope);
+  const [liveScale, setLiveScale] = useState({});
+  const busy = useRef(false);
 
-  const fetchAll = useCallback(async () => {
+  const apply = useCallback((res) => {
+    setData(Object.fromEntries(Object.keys(EMPTY).map((k) => [k, res[k] || []])));
+    if (res.quotes) setQuotes(res.quotes);
+    if (res.settings) setSettings(res.settings);
+  }, []);
+
+  const load = useCallback(async () => {
+    setStatus('loading');
+    setError('');
     try {
-      const [s, w, a, t, al] = await Promise.all([
-        api.stocks.all(),
-        api.watchlist.list(),
-        api.account.get(),
-        api.account.transactions(),
-        api.alerts.list(),
-      ]);
-      tickerRef.current = createTicker(s);
+      const [s, res] = await Promise.all([api.stocks.all(), api.load()]);
       setStocks(s);
-      setPrices(tickerRef.current.prices());
-      setWatchlist(w);
-      setAccount(a);
-      setTransactions(t);
-      setAlerts(al);
+      apply(res);
+      // With a live provider the sample history is rescaled once so it ends at the real price.
+      const scales = {};
+      if (res.quotes?.source !== 'simulated') for (const st of s) if (res.quotes.prices[st.symbol] && st.initial_price > 0) scales[st.symbol] = res.quotes.prices[st.symbol].price / st.initial_price;
+      setLiveScale(scales);
       setStatus('ready');
     } catch (e) {
       setError(errMsg(e));
       setStatus('error');
     }
-  }, []);
-
-  const load = useCallback(() => {
-    setStatus('loading');
-    setError('');
-    return fetchAll();
-  }, [fetchAll]);
+  }, [apply]);
 
   useEffect(() => {
-    // Initial load: state is already 'loading', and fetchAll only sets state after awaiting the API.
+    // Initial load: state is already 'loading', and load only sets state after awaiting the API.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchAll();
-  }, [fetchAll]);
+    load();
+  }, [load]);
 
-  // Simulated live prices (demo only). Pauses while the tab is hidden.
+  const refresh = useCallback(async () => {
+    apply(await api.load());
+  }, [apply]);
+
+  // Market ticks: the API fills open orders and fires alerts, then returns fresh quotes.
   useEffect(() => {
-    if (!IS_DEMO || status !== 'ready') return undefined;
-    const id = setInterval(() => {
-      if (document.hidden || !tickerRef.current) return;
-      const next = tickerRef.current.tick();
-      setPrices(next);
-      for (const a of evaluateAlerts(alertsRef.current, next)) {
-        const stamp = new Date().toISOString();
-        alertsRef.current = alertsRef.current.map((x) => (x.id === a.id ? { ...x, triggeredAt: stamp } : x));
-        setAlerts(alertsRef.current);
-        api.alerts.markTriggered(a.id).catch(() => {});
-        toast.show(`Price alert: ${a.symbol} is ${a.direction} ${money(a.target)} (now ${money(next[a.symbol])}).`, 'success', 9000);
+    if (status !== 'ready') return undefined;
+    const ms = Math.max(3, settings.refreshSeconds || 5) * 1000;
+    const id = setInterval(async () => {
+      if (document.hidden || busy.current) return;
+      busy.current = true;
+      try {
+        const res = await api.sync();
+        setQuotes(res.quotes);
+        if (res.settings) setSettings(res.settings);
+        const { fills = [], rejected = [], triggered = [] } = res.events || {};
+        if (fills.length || rejected.length || triggered.length) {
+          for (const o of fills) toast.show(`Order filled: ${o.type} ${o.side} ${o.shares} ${o.symbol} at $${o.fillPrice}.`, 'success', 9000);
+          for (const o of rejected) toast.error(`Order rejected: ${o.symbol}. ${o.reason}`);
+          for (const a of triggered) toast.show(`Price alert: ${a.symbol} crossed ${a.direction} $${a.target}.`, 'success', 9000);
+          await refresh();
+        }
+      } catch {
+        /* a missed tick is harmless; the next one retries */
+      } finally {
+        busy.current = false;
       }
-    }, TICK_MS);
+    }, ms);
     return () => clearInterval(id);
-  }, [status, toast]);
+  }, [status, settings.refreshSeconds, toast, refresh]);
 
+  const prices = quotes.prices;
   const catalog = useMemo(() => decorate(stocks, prices), [stocks, prices]);
   const bySymbol = useMemo(() => Object.fromEntries(catalog.map((s) => [s.symbol, s])), [catalog]);
-  const opens = useMemo(() => Object.fromEntries(stocks.map((s) => [s.symbol, s.initial_price])), [stocks]);
-  const portfolio = useMemo(
-    () => computePortfolio(account.holdings, prices, account.cash, opens, account.realized),
-    [account, prices, opens],
-  );
-  const watchSet = useMemo(() => new Set(watchlist.map((w) => w.symbol)), [watchlist]);
+  const symbols = useMemo(() => new Set(stocks.map((s) => s.symbol)), [stocks]);
 
-  const addToWatchlist = useCallback(
-    async (stock) => {
-      try {
-        const res = await api.watchlist.add(stock);
-        setWatchlist((w) => (w.some((x) => x.symbol === stock.symbol) ? w : [...w, stock]));
-        toast.success(res.message || `${stock.symbol} added to your watchlist.`);
-      } catch (e) {
-        toast.error(errMsg(e));
-      }
+  const scopeId = data.portfolios.some((p) => p.id === scope) ? scope : 'all';
+  const setScope = useCallback((id) => {
+    setScopeState(id);
+    try {
+      localStorage.setItem(SCOPE_KEY, id);
+    } catch {
+      /* not persisted */
+    }
+  }, []);
+
+  // One replay per portfolio; the scoped view merges the selected ones.
+  const ledgers = useMemo(
+    () => Object.fromEntries(data.portfolios.map((p) => [p.id, replay(data.transactions.filter((t) => t.portfolioId === p.id), { method: p.method, strict: false })])),
+    [data.portfolios, data.transactions],
+  );
+  const scoped = useMemo(() => (scopeId === 'all' ? data.portfolios : data.portfolios.filter((p) => p.id === scopeId)), [data.portfolios, scopeId]);
+  const scopedTx = useMemo(() => data.transactions.filter((t) => scoped.some((p) => p.id === t.portfolioId)), [data.transactions, scoped]);
+  const result = useMemo(() => combine(scoped.map((p) => ledgers[p.id])), [scoped, ledgers]);
+  const portfolio = useMemo(() => valuePortfolio(result, prices), [result, prices]);
+  const valueOf = useCallback((id) => valuePortfolio(ledgers[id] || replay([]), prices), [ledgers, prices]);
+
+  /** Daily candles for a stock, rescaled when a live provider quote differs from the sample base price. */
+  const seriesCache = useRef(new Map());
+  const seriesFor = useCallback(
+    (symbol) => {
+      const s = stocks.find((x) => x.symbol === symbol);
+      if (!s) return [];
+      const base = dailySeries(s);
+      const scale = liveScale[symbol] ?? 1;
+      if (Math.abs(scale - 1) < 0.02) return base;
+      const key = `${symbol}:${scale.toFixed(3)}:${base.length}`;
+      if (!seriesCache.current.has(key)) seriesCache.current.set(key, base.map((c) => ({ ...c, o: c.o * scale, h: c.h * scale, l: c.l * scale, c: c.c * scale })));
+      return seriesCache.current.get(key);
     },
-    [toast],
+    [stocks, liveScale],
   );
 
-  const removeFromWatchlist = useCallback(
+  // Every mutation goes through the API, then reloads the data so all views stay consistent.
+  const mutate = useCallback(
+    async (fn) => {
+      const res = await fn();
+      await refresh();
+      return res;
+    },
+    [refresh],
+  );
+  const actions = useMemo(
+    () => ({
+      createPortfolio: (i) => mutate(() => api.portfolios.create(i)),
+      updatePortfolio: (id, i) => mutate(() => api.portfolios.update(id, i)),
+      deletePortfolio: (id) => mutate(() => api.portfolios.remove(id)),
+      addTransaction: (i) => mutate(() => api.transactions.create(i)),
+      importTransactions: (pid, rows) => mutate(() => api.transactions.import(pid, rows)),
+      deleteTransaction: (id) => mutate(() => api.transactions.remove(id)),
+      placeOrder: (i) => mutate(() => api.orders.place(i)),
+      cancelOrder: (id) => mutate(() => api.orders.cancel(id)),
+      createWatchlist: (i) => mutate(() => api.watchlists.create(i)),
+      updateWatchlist: (id, i) => mutate(() => api.watchlists.update(id, i)),
+      deleteWatchlist: (id) => mutate(() => api.watchlists.remove(id)),
+      createAlert: (i) => mutate(() => api.alerts.create(i)),
+      deleteAlert: (id) => mutate(() => api.alerts.remove(id)),
+      createGoal: (i) => mutate(() => api.goals.create(i)),
+      updateGoal: (id, i) => mutate(() => api.goals.update(id, i)),
+      deleteGoal: (id) => mutate(() => api.goals.remove(id)),
+      markNotificationsRead: () => mutate(() => api.notifications.markRead()),
+      resetAccount: () => mutate(() => api.account.reset()),
+    }),
+    [mutate],
+  );
+
+  /** Star toggle: removes the symbol from every list that has it, otherwise adds it to the first list. */
+  const toggleWatch = useCallback(
     async (symbol) => {
-      try {
-        await api.watchlist.remove(symbol);
-        setWatchlist((w) => w.filter((x) => x.symbol !== symbol));
-        toast.success(`${symbol} removed from your watchlist.`);
-      } catch (e) {
-        toast.error(errMsg(e));
+      const lists = data.watchlists;
+      const holding = lists.filter((w) => w.symbols.includes(symbol));
+      let msg;
+      if (holding.length) {
+        for (const w of holding) await api.watchlists.update(w.id, { symbols: w.symbols.filter((x) => x !== symbol) });
+        msg = `${symbol} removed from your watchlists.`;
+      } else if (lists.length) {
+        await api.watchlists.update(lists[0].id, { symbols: [...lists[0].symbols, symbol] });
+        msg = `${symbol} added to ${lists[0].name}.`;
+      } else {
+        await api.watchlists.create({ name: 'My watchlist', symbols: [symbol] });
+        msg = `${symbol} added to My watchlist.`;
       }
+      await refresh();
+      return msg;
     },
-    [toast],
+    [data.watchlists, refresh],
   );
-
-  const trade = useCallback(async (order) => {
-    const res = await api.account.trade(order); // errors surface to the form
-    setAccount(res.account);
-    setTransactions((t) => [res.tx, ...t]);
-    return res.tx;
-  }, []);
-
-  const addAlert = useCallback(async (input) => {
-    const a = await api.alerts.add(input);
-    setAlerts((x) => [...x, a]);
-    return a;
-  }, []);
-
-  const removeAlert = useCallback(
-    async (id) => {
-      try {
-        await api.alerts.remove(id);
-        setAlerts((x) => x.filter((a) => a.id !== id));
-      } catch (e) {
-        toast.error(errMsg(e));
-      }
-    },
-    [toast],
-  );
-
-  const resetAccount = useCallback(async () => {
-    await api.account.resetAccount();
-    await load();
-  }, [load]);
 
   const value = useMemo(
     () => ({
-      status, error, reload: load, stocks: catalog, bySymbol, prices, watchlist, watchSet, account, portfolio,
-      transactions, alerts, addToWatchlist, removeFromWatchlist, trade, addAlert, removeAlert, resetAccount,
+      toggleWatch, status, error, reload: load, refresh, stocks: catalog, bySymbol, symbols, quotes, prices, settings, ...data,
+      scope: scopeId, setScope, scoped, ledgers, scopedTx, result, portfolio, valueOf, seriesFor, ...actions,
     }),
-    [status, error, load, catalog, bySymbol, prices, watchlist, watchSet, account, portfolio, transactions, alerts,
-      addToWatchlist, removeFromWatchlist, trade, addAlert, removeAlert, resetAccount],
+    [toggleWatch, status, error, load, refresh, catalog, bySymbol, symbols, quotes, prices, settings, data, scopeId, setScope, scoped, ledgers, scopedTx, result, portfolio, valueOf, seriesFor, actions],
   );
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

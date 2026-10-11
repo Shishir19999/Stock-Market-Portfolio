@@ -24,3 +24,13 @@ export const dateTime = (iso) => {
     ? '—'
     : d.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
+
+export const dateOnly = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+};
+
+/** Fraction (0.0123) as a signed percent string. */
+export const pctFrac = (f, digits = 2) => pct(f * 100, digits);
+export const plainPct = (n, digits = 1) => (Number.isFinite(n) ? `${n.toFixed(digits)}%` : '—');
+export const compact = (n) => (Number.isFinite(n) ? new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n) : '—');

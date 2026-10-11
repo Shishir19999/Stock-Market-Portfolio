@@ -7,7 +7,7 @@ export default function NotFound() {
   return (
     <div className="container narrow">
       <div className="card">
-        <EmptyState icon="404" title="This page does not exist" action={<Link to="/dashboard" className="btn btn-primary">Go to dashboard</Link>}>
+        <EmptyState level={1} icon="404" title="This page does not exist" action={<Link to="/dashboard" className="btn btn-primary">Go to dashboard</Link>}>
           The link may be broken or the page may have moved.
         </EmptyState>
       </div>
