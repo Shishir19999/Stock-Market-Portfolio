@@ -1,71 +1,55 @@
 import { describe, expect, it } from 'vitest';
-import catalogue from '../data/stocks.json';
-import { decorate, filterStocks, paginate } from './stocks.js';
-import { generateHistory, mulberry32, rebase, sliceRange } from './history.js';
-import { createTicker, nextPrice } from './ticker.js';
+import catalogue from '@shared/data/stocks.json';
+import { SECTORS } from '@shared/sectors.js';
+import { dailySeries, simulatedQuotes } from '@shared/market.js';
+import { stockMetrics } from '@shared/analytics.js';
+import { decorate, filterStocks, paginate, screen } from './stocks.js';
 
-const all = decorate(catalogue);
+const NOW = Date.parse('2026-10-07T15:00:00Z');
+const all = decorate(catalogue, simulatedQuotes(catalogue, NOW));
 
 describe('stock filtering', () => {
-  it('has 60 sample stocks all assigned a sector', () => {
+  it('has 60 sample stocks all assigned a sector, with live quotes applied', () => {
     expect(all).toHaveLength(60);
     expect(all.some((s) => s.sector === 'Other')).toBe(false);
+    expect(new Set(all.map((s) => s.sector))).toEqual(new Set(SECTORS));
+    expect(all[0]).toHaveProperty('changePct');
+    expect(all.every((s) => s.price > 0 && s.prev > 0)).toBe(true);
   });
   it('searches symbol, company and description case-insensitively', () => {
     expect(filterStocks(all, { search: 'aapl' }).map((s) => s.symbol)).toContain('AAPL');
     expect(filterStocks(all, { search: 'wireless' }).length).toBeGreaterThan(1);
     expect(filterStocks(all, { search: 'zzzzz' })).toEqual([]);
   });
-  it('filters by sector and 2002-2007 trend', () => {
+  it('filters by sector and 2002-2007 trend, and sorts', () => {
     expect(filterStocks(all, { sector: 'Financials' }).every((s) => s.sector === 'Financials')).toBe(true);
     expect(filterStocks(all, { trend: 'down' }).every((s) => s.price_2007 < s.price_2002)).toBe(true);
-  });
-  it('sorts', () => {
     const p = filterStocks(all, { sort: 'priceDesc' }).map((s) => s.price);
     expect(p).toEqual([...p].sort((a, b) => b - a));
-    const n = filterStocks(all, { sort: 'name' });
-    expect(n[0].company.localeCompare(n[1].company)).toBeLessThanOrEqual(0);
+    const d = filterStocks(all, { sort: 'dayDesc' }).map((s) => s.changePct);
+    expect(d).toEqual([...d].sort((a, b) => b - a));
   });
-  it('paginates and clamps', () => {
-    expect(paginate(all, 1, 12)).toMatchObject({ page: 1, pages: 5, total: 60 });
-    expect(paginate(all, 99, 12).page).toBe(5);
-    expect(paginate([], 1, 12)).toMatchObject({ pages: 1, items: [] });
-  });
-});
-
-describe('history', () => {
-  const s = catalogue[0];
-  const now = new Date(Date.UTC(2026, 9, 7));
-  it('is deterministic and anchored on the known prices', () => {
-    const a = generateHistory(s, now);
-    expect(generateHistory(s, now)).toEqual(a);
-    expect(a[0].price).toBe(s.price_2002);
-    expect(a.find((p) => p.t === Date.UTC(2007, 0, 1)).price).toBe(s.price_2007);
-    expect(a[a.length - 1].price).toBe(s.initial_price);
-    expect(a.every((p, i) => i === 0 || p.t > a[i - 1].t)).toBe(true);
-    expect(a.every((p) => p.price > 0)).toBe(true);
-  });
-  it('slices ranges and rebases to 100', () => {
-    const a = generateHistory(s, now);
-    expect(sliceRange(a, '1Y', now.getTime()).length).toBeLessThan(15);
-    expect(sliceRange(a, 'EARLY').every((p) => p.era === 'early')).toBe(true);
-    expect(rebase(a)[0].price).toBe(100);
+  it('paginates and clamps the page', () => {
+    const pg = paginate(all, 99, 12);
+    expect(pg.page).toBe(5);
+    expect(pg.items).toHaveLength(12);
+    expect(paginate([], 1, 12)).toMatchObject({ page: 1, pages: 1, total: 0 });
   });
 });
 
-describe('ticker', () => {
-  it('stays positive and near the base price', () => {
-    const rng = mulberry32(1);
-    let p = 100;
-    for (let i = 0; i < 500; i += 1) p = nextPrice(p, 100, rng);
-    expect(p).toBeGreaterThan(80);
-    expect(p).toBeLessThan(120);
+describe('screener', () => {
+  const rows = all.map((stock) => ({ stock, m: stockMetrics(dailySeries(stock, NOW)) }));
+  it('returns everything with no criteria', () => {
+    expect(screen(rows, {})).toHaveLength(60);
   });
-  it('ticks every symbol', () => {
-    const t = createTicker(catalogue, 7);
-    const before = { ...t.prices() };
-    const after = t.tick();
-    expect(Object.keys(after)).toHaveLength(60);
-    expect(after).not.toEqual(before);
+  it('applies price, sector, volatility, trend and RSI filters together', () => {
+    const cheap = screen(rows, { maxPrice: '25' });
+    expect(cheap.every((r) => r.stock.price <= 25)).toBe(true);
+    expect(cheap.length).toBeGreaterThan(0);
+    const tech = screen(rows, { sector: 'Technology', trend: 'above50' });
+    expect(tech.every((r) => r.stock.sector === 'Technology' && r.m.aboveSma50)).toBe(true);
+    const calm = screen(rows, { maxVol: '30', minRsi: '20', maxRsi: '80' });
+    expect(calm.every((r) => r.m.volatility <= 0.3 && r.m.rsi >= 20 && r.m.rsi <= 80)).toBe(true);
+    expect(screen(rows, { minRet1Y: '100000' })).toEqual([]);
   });
 });

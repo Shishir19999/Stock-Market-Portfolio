@@ -33,7 +33,7 @@ export default function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="toasts" aria-label="Notifications">
+      <div className="toasts" role="region" aria-label="Notifications">
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast-${t.type}`} role={t.type === 'error' ? 'alert' : 'status'}>
             <span className="toast-icon" aria-hidden="true">

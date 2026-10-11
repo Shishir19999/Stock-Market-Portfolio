@@ -12,13 +12,21 @@ import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Market from './pages/Market.jsx';
 import StockDetail from './pages/StockDetail.jsx';
-import Watchlist from './pages/Watchlist.jsx';
+import Watchlists from './pages/Watchlists.jsx';
+import Portfolios from './pages/Portfolios.jsx';
+import Orders from './pages/Orders.jsx';
+import Alerts from './pages/Alerts.jsx';
+import Goals from './pages/Goals.jsx';
+import Analytics from './pages/Analytics.jsx';
+import Reports from './pages/Reports.jsx';
+import Screener from './pages/Screener.jsx';
+import Admin from './pages/Admin.jsx';
 import Transactions from './pages/Transactions.jsx';
 import Compare from './pages/Compare.jsx';
 import NotFound from './pages/NotFound.jsx';
 import { IS_DEMO } from './api/index.js';
 
-// GitHub Pages cannot rewrite deep links, so the static demo uses hash URLs (#/stocks/AAPL).
+// GitHub Pages cannot rewrite deep links, so the static live preview uses hash URLs (#/stocks/AAPL).
 const Router = IS_DEMO ? HashRouter : BrowserRouter;
 
 function ScrollToTop() {
@@ -70,7 +78,16 @@ function Pages() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/stocks" element={<Market />} />
       <Route path="/stocks/:symbol" element={<StockDetail />} />
-      <Route path="/watchlist" element={<Watchlist />} />
+      <Route path="/screener" element={<Screener />} />
+      <Route path="/watchlists" element={<Watchlists />} />
+      <Route path="/watchlist" element={<Navigate to="/watchlists" replace />} />
+      <Route path="/portfolios" element={<Portfolios />} />
+      <Route path="/orders" element={<Orders />} />
+      <Route path="/alerts" element={<Alerts />} />
+      <Route path="/goals" element={<Goals />} />
+      <Route path="/analytics" element={<Analytics />} />
+      <Route path="/reports" element={<Reports />} />
+      <Route path="/admin" element={<Admin />} />
       <Route path="/transactions" element={<Transactions />} />
       <Route path="/compare" element={<Compare />} />
       <Route path="*" element={<NotFound />} />

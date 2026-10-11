@@ -3,15 +3,20 @@ import { Navigate } from 'react-router-dom';
 import { useAuth, useTitle } from '../context/hooks.js';
 import { Field } from '../components/ui.jsx';
 import { Reveal, Parallax } from '../components/Reveal.jsx';
-import { Logo, ThemeToggle, DemoBanner } from '../components/Layout.jsx';
-import { DEMO_LOGINS, EMAIL_RE } from '../api/demo.js';
+import { Logo, ThemeToggle, PreviewBanner } from '../components/Layout.jsx';
+import { DEMO_LOGINS } from '../api/demo.js';
+import { EMAIL_RE, PASSWORD_MIN } from '@shared/validate.js';
+import { IS_DEMO } from '../api/index.js';
 
 const FEATURES = [
-  ['Portfolio dashboard', 'Live profit and loss, cash and an allocation donut for every holding.'],
-  ['Paper trading', 'Buy and sell at simulated market prices with a full transaction history.'],
-  ['Price history', 'Interactive charts from 2002 to today, plus a simulated live ticker.'],
-  ['Watchlist and alerts', 'Track stocks and get notified when a price crosses your target.'],
-  ['Compare and export', 'Rebase two stocks side by side and export any table to CSV.'],
+  ['Portfolio dashboard', 'Value, daily and total gain, allocation by holding, sector or asset, and performance against a benchmark.'],
+  ['Multiple portfolios', 'Separate portfolios with their own cash and FIFO or average cost basis, plus CSV import and export.'],
+  ['Realized and unrealized P&L', 'Tax-lot report, dividends, fees and a printable report built from your transaction ledger.'],
+  ['Pro charts', 'Candlestick and line charts with SMA, EMA and RSI, keyboard-friendly with data tables.'],
+  ['Paper trading', 'Market, limit and stop orders that fill automatically as simulated prices move.'],
+  ['Risk and goals', 'Volatility, drawdown, Sharpe and beta, savings goals, targets and rebalancing suggestions.'],
+  ['Screener and compare', 'Filter the market by momentum and volatility, and compare up to four stocks side by side.'],
+  ['Alerts and watchlists', 'Several watchlists and price alerts with in-app notifications.'],
 ];
 
 export default function Login() {
@@ -36,7 +41,7 @@ export default function Login() {
     if (mode === 'signup' && form.name.trim().length < 2) e.name = 'Enter your name (at least 2 characters).';
     if (!EMAIL_RE.test(form.email.trim())) e.email = 'Enter a valid email address.';
     if (!form.password) e.password = 'Enter your password.';
-    else if (mode === 'signup' && form.password.length < 6) e.password = 'Use at least 6 characters.';
+    else if (mode === 'signup' && form.password.length < PASSWORD_MIN) e.password = `Use at least ${PASSWORD_MIN} characters.`;
     return e;
   };
 
@@ -69,16 +74,17 @@ export default function Login() {
         <span className="brand"><Logo /><span className="brand-name">Stock Market Portfolio</span></span>
         <ThemeToggle />
       </header>
-      <DemoBanner />
+      <PreviewBanner />
+      <main id="main">
       <section className="hero">
         <Parallax speed={0.22} className="blob blob-a"><span /></Parallax>
         <Parallax speed={0.1} className="blob blob-b"><span /></Parallax>
         <div className="hero-grid">
           <Reveal className="hero-copy">
-            <p className="eyebrow">Paper trading playground</p>
+            <p className="eyebrow">Portfolio and trading tracker</p>
             <h1>Build a portfolio. Track it. Learn without risk.</h1>
             <p className="lead">
-              Practise investing with $25,000 of virtual cash across 60 well-known companies, then watch your profit and loss move with a simulated live market.
+              Track portfolios, analyse risk and performance, and paper-trade with virtual cash across 60 well-known companies while a simulated market moves in real time.
             </p>
           </Reveal>
           <Reveal className="card auth-card" delay={120}>
@@ -106,8 +112,9 @@ export default function Login() {
                 {mode === 'login' ? 'Create an account' : 'Sign in'}
               </button>
             </p>
+            {IS_DEMO && (
             <div className="demo-logins">
-              <h3>Demo logins</h3>
+              <h3>Sample logins</h3>
               <ul className="plain-list">
                 {DEMO_LOGINS.map((d) => (
                   <li key={d.email}>
@@ -120,11 +127,13 @@ export default function Login() {
                 ))}
               </ul>
             </div>
+            )}
+            {!IS_DEMO && <p className="muted small center">The first account created becomes the administrator.</p>}
           </Reveal>
         </div>
       </section>
       <section className="features" aria-labelledby="features-h">
-        <h2 id="features-h">Everything you need to practise investing</h2>
+        <h2 id="features-h">Everything a portfolio tracker needs</h2>
         <div className="grid feature-grid">
           {FEATURES.map(([t, d], i) => (
             <Reveal key={t} className="card feature" delay={i * 70}>
@@ -134,7 +143,8 @@ export default function Login() {
           ))}
         </div>
       </section>
-      <footer className="footer"><span>Prices are illustrative sample data. Paper trading only, not financial advice.</span></footer>
+      </main>
+      <footer className="footer"><span>Prices are simulated sample data. Paper trading only, not financial advice.</span></footer>
     </div>
   );
 }
